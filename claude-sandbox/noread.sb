@@ -206,6 +206,9 @@
     (global-name "com.apple.sysmond")  ; For process listing
     (global-name "com.apple.FSEvents")  ; For Node.js file watching
     (global-name "com.apple.SystemConfiguration.DNSConfiguration")  ; For DNS resolution in Lix
+    (global-name "com.apple.authd")                  ;; modern auth daemon — the key missing piece
+    (global-name "com.apple.security.authtrampoline") ;; privilege-escalation leg of the auth round-trip
+
 )
 
 ;; Allow file attribute operations needed for file creation
