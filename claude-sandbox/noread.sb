@@ -110,6 +110,7 @@
     (sysctl-name "hw.l1icachesize_compat")
     (sysctl-name "hw.l2cachesize_compat")
     (sysctl-name "hw.l3cachesize_compat")
+    (sysctl-name "hw.logicalcpu")
     (sysctl-name "hw.logicalcpu_max")
     (sysctl-name "hw.machine")
     (sysctl-name "hw.memsize")
@@ -156,6 +157,9 @@
     (subpath (string-append (param "HOME_DIR") "/.claude"))
     (literal (string-append (param "HOME_DIR") "/.claude.json"))
     (literal (string-append (param "HOME_DIR") "/.claude.json.backup"))
+    ;; Claude atomic-write temporaries: .claude.json.lock and .claude.json.tmp.<pid>.<ts>
+    (literal (string-append (param "HOME_DIR") "/.claude.json.lock"))
+    (regex (string-append "^" (param "HOME_DIR") "/\\.claude\\.json\\.tmp\\..*$"))
     (subpath (string-append (param "HOME_DIR") "/Library/Caches/claude-cli-nodejs"))
     ;; Claude app data — Electron session storage, cookies, local-agent-mode-sessions, etc.
     (subpath (string-append (param "HOME_DIR") "/Library/Application Support/Claude"))
@@ -206,6 +210,10 @@
     (global-name "com.apple.sysmond")  ; For process listing
     (global-name "com.apple.FSEvents")  ; For Node.js file watching
     (global-name "com.apple.SystemConfiguration.DNSConfiguration")  ; For DNS resolution in Lix
+    ;; Preferences daemon — without this cfprefsd falls back to slow direct file access,
+    ;; which breaks keychain access decisions and causes the "direct access mode" warning
+    (global-name "com.apple.cfprefsd.daemon")
+    (global-name "com.apple.cfprefsd.agent")
 )
 
 ;; Allow file attribute operations needed for file creation
@@ -287,10 +295,14 @@
 ;; Java needs to read dtracehelper
 (allow file-read-data (literal "/dev/dtracehelper"))
 
-;: ;; Java needs IPC shared memory for notification center
-;; (allow ipc-posix-shm-read-data
-;;     (ipc-posix-name "apple.shm.notification_center")
-;; )
+;; IPC shared memory for notification center — needed by security, git, plutil, and most CoreFoundation processes
+(allow ipc-posix-shm-read-data
+    (ipc-posix-name "apple.shm.notification_center")
+)
+;; Keychain DB change notification — needed by security CLI for write operations
+(allow ipc-posix-shm-write-create ipc-posix-shm-write-data
+    (ipc-posix-name "com.apple.AppleDatabaseChanged")
+)
 
 ;; Java needs system sockets (domain:32 is AF_NDRV for network device raw access)
 (allow system-socket)
@@ -304,6 +316,8 @@
     (literal (string-append (param "HOME_DIR") "/Library/Caches"))
     (literal (string-append (param "HOME_DIR") "/Library/Preferences"))
     (literal (string-append (param "HOME_DIR") "/Library/Application Support"))
+    ;; Needed when Claude resolves its own binary path through ~/.local symlinks
+    (literal (string-append (param "HOME_DIR") "/.local"))
 )
 
 (allow file-read-data
@@ -315,9 +329,13 @@
     (literal "/Library/Preferences/Logging/com.apple.diagnosticd.filter.plist")
     (literal "/Library/Preferences/.GlobalPreferences.plist")
     (literal "/Library/Preferences/com.apple.networkd.plist")
+    ;; Required for keychain access decisions (SecKeychainCopyDefault, etc.)
+    (literal "/Library/Preferences/com.apple.security.plist")
     (literal (string-append (param "HOME_DIR") "/Library/Preferences/.GlobalPreferences.plist"))
     (literal (string-append (param "HOME_DIR") "/Library/Preferences/.GlobalPreferences_m.plist"))
     (regex (string-append "^" (param "HOME_DIR") "/Library/Preferences/ByHost/\\.GlobalPreferences\\..*\\.plist$"))
+    ;; User text encoding — needed by security, git, plutil, and most CLI tools
+    (literal (string-append (param "HOME_DIR") "/.CFUserTextEncoding"))
 )
 
 ;; read/write ~/.sbt & coursier caches
