@@ -251,6 +251,12 @@
     ;; Required for keychain write authorization (e.g. storing OAuth tokens via keytar)
     (global-name "com.apple.SecurityAgent")
     (global-name "com.apple.security.agent.login")
+    ;; Authorization daemon — without this, keychain auth prompts fail silently in sandboxed
+    ;; processes (e.g. keytar/Node.js). The `security` CLI can still prompt because it uses
+    ;; the older SecurityServer path, but modern APIs route through authd.
+    (global-name "com.apple.authd")
+    ;; Security authorization trampoline — used when auth needs privilege escalation
+    (global-name "com.apple.security.authtrampoline")
 )
 
 ;; Java/Scala development permissions
