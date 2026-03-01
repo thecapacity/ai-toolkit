@@ -138,6 +138,7 @@
     (sysctl-name "hw.optional.arm.FEAT_JSCVT")
     (sysctl-name "hw.optional.arm.FEAT_FP16")
     (sysctl-name "hw.optional.arm.FEAT_FRINTTS")
+    (sysctl-name "hw.optional.arm.AdvSIMD_HPFPCvt")
 )
 
 ;; Allow file writes to specific paths only
@@ -305,11 +306,18 @@
 ;; Java needs to read dtracehelper
 (allow file-read-data (literal "/dev/dtracehelper"))
 
-;; IPC shared memory for notification center — needed by security, git, plutil, and most CoreFoundation processes
+;; IPC shared memory for CoreFoundation — needed by security, git, plutil, and most CF processes
 (allow ipc-posix-shm-read-data
     (ipc-posix-name "apple.shm.notification_center")
+    ;; CFPreferences daemon shared memory (fast IPC path; without this cfprefsd
+    ;; falls back to slow direct file I/O which causes "direct access mode" warnings)
+    (ipc-posix-name "apple.cfprefs.daemonv1")
+    ;; CFPreferences per-user shared memory (name encodes the uid, e.g. "501v1")
+    (ipc-posix-name-regex #"^apple\.cfprefs\.\d+v\d+$")
+    ;; Keychain DB change notifications — read by security CLI and keychain clients
+    (ipc-posix-name "com.apple.AppleDatabaseChanged")
 )
-;; Keychain DB change notification — needed by security CLI for write operations
+;; Keychain DB change notification — write side (security CLI signals other processes)
 (allow ipc-posix-shm-write-create ipc-posix-shm-write-data
     (ipc-posix-name "com.apple.AppleDatabaseChanged")
 )
@@ -329,7 +337,10 @@
     (literal (string-append (param "HOME_DIR") "/Library/Preferences"))
     (literal (string-append (param "HOME_DIR") "/Library/Application Support"))
     ;; Needed when Claude resolves its own binary path through ~/.local symlinks
-    (literal (string-append (param "HOME_DIR") "/.local"))
+    (subpath (string-append (param "HOME_DIR") "/.local"))
+    ;; Allow Claude Code to discover git repos by walking the directory tree
+    ;; (file-read-metadata = stat/getattr only; does NOT expose file contents)
+    (subpath (param "HOME_DIR"))
 )
 
 ;; autofs_nowait: a flag file that many CoreFoundation processes read to detect
