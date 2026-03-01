@@ -128,6 +128,16 @@
     (sysctl-name "kern.osversion")
     (sysctl-name "kern.secure_kernel")
     (sysctl-name "kern.version")
+    ;; bash needs kern.ngroups to initialize group membership
+    (sysctl-name "kern.ngroups")
+    ;; ARM feature detection (Node.js V8 / JVM)
+    (sysctl-name "hw.optional.neon")
+    (sysctl-name "hw.optional.arm.FEAT_PMULL")
+    (sysctl-name "hw.optional.arm.FEAT_DotProd")
+    (sysctl-name "hw.optional.arm.FEAT_AES")
+    (sysctl-name "hw.optional.arm.FEAT_JSCVT")
+    (sysctl-name "hw.optional.arm.FEAT_FP16")
+    (sysctl-name "hw.optional.arm.FEAT_FRINTTS")
 )
 
 ;; Allow file writes to specific paths only
@@ -309,7 +319,9 @@
 
 ;; Java needs to read metadata on certain directories
 (allow file-read-metadata
-    (literal "/dev")
+    ;; Allow metadata reads on all /dev nodes (disk0, dtrace, bpf*, etc.)
+    ;; These are harmless — it's just stat()/getattr(), not reading device content
+    (subpath "/dev")
     (literal "/private")
     (literal "/Library")
     (literal (string-append (param "HOME_DIR") "/Library"))
@@ -318,6 +330,12 @@
     (literal (string-append (param "HOME_DIR") "/Library/Application Support"))
     ;; Needed when Claude resolves its own binary path through ~/.local symlinks
     (literal (string-append (param "HOME_DIR") "/.local"))
+)
+
+;; autofs_nowait: a flag file that many CoreFoundation processes read to detect
+;; whether autofs is suppressing mount triggers; harmless to allow
+(allow file-read-data
+    (literal "/dev/autofs_nowait")
 )
 
 (allow file-read-data
