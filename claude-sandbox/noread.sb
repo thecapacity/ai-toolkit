@@ -36,6 +36,7 @@
   (subpath "/private/etc")
   (subpath "/System")
   (subpath "/nix")
+  (subpath "/Library/Keychains")  ;; system keychain — walked during login keychain lookup
   )
 
 ;; necessary for nix-darwin's `/run/current-system/sw/bin`
@@ -92,7 +93,7 @@
 (allow mach-priv-task-port (target same-sandbox))
 
 ;; User preferences - from https://github.com/anthropic-experimental/sandbox-runtime/blob/1bafa66a2c3ebc52569fc0c1a868e85e778f66a0/src/sandbox/macos-sandbox-utils.ts#L200
-;; (allow user-preference-read) ;; doesn't seem to be required by claude-code
+(allow user-preference-read) ;; required for security framework / keychain access decisions
 
 ;; Allow read access to system information
 ;; From Chromium's sandbox policy for macOS
@@ -156,6 +157,10 @@
     (literal (string-append (param "HOME_DIR") "/.claude.json"))
     (literal (string-append (param "HOME_DIR") "/.claude.json.backup"))
     (subpath (string-append (param "HOME_DIR") "/Library/Caches/claude-cli-nodejs"))
+    ;; Claude app data — Electron session storage, cookies, local-agent-mode-sessions, etc.
+    (subpath (string-append (param "HOME_DIR") "/Library/Application Support/Claude"))
+    ;; Claude preferences
+    (literal (string-append (param "HOME_DIR") "/Library/Preferences/com.anthropic.claudefordesktop.plist"))
 
     ;; pyenv shims and versions
     (subpath (string-append (param "HOME_DIR") "/.pyenv"))
@@ -163,10 +168,14 @@
     ;; npm cache (MCP servers installed via npm)
     (subpath (string-append (param "HOME_DIR") "/.npm"))
 
+    ;; Wrangler/Cloudflare CLI state (create-cloudflare writes telemetry config here)
+    (subpath (string-append (param "HOME_DIR") "/Library/Preferences/.wrangler"))
+
     ;; Gemini configuration
     (subpath (string-append (param "HOME_DIR") "/.gemini"))
 
     ;; Standard I/O devices
+    (literal "/dev/stdin")
     (literal "/dev/stdout")
     (literal "/dev/stderr")
     (literal "/dev/null")
@@ -217,6 +226,7 @@
   (global-name "com.apple.system.logger")
   (global-name "com.apple.system.notification_center")
   (global-name "com.apple.trustd.agent")
+  (global-name "com.apple.trustd")
   (global-name "com.apple.system.opendirectoryd.libinfo")
   (global-name "com.apple.system.opendirectoryd.membership")
   (global-name "com.apple.bsd.dirhelper")
@@ -226,9 +236,11 @@
 
 ;; The following is required to get Claude API Key from macOS Keychain (if logged in via /login)
 
-;; Specifically allow login keychain
+;; Allow login keychain and its SQLite WAL companion files (-shm, -wal)
+;; Also allow system keychain — macOS walks user → system keychain chain during lookup
 (allow file-read*
-    (literal (string-append (param "HOME_DIR") "/Library/Keychains/login.keychain-db"))
+    (subpath (string-append (param "HOME_DIR") "/Library/Keychains"))
+    (subpath "/Library/Keychains")
 )
 
 ;; Critical: Allow communication with securityd (keychain daemon)
@@ -236,6 +248,9 @@
     (global-name "com.apple.SecurityServer")
     (global-name "com.apple.securityd")
     (global-name "com.apple.securityd.xpc")
+    ;; Required for keychain write authorization (e.g. storing OAuth tokens via keytar)
+    (global-name "com.apple.SecurityAgent")
+    (global-name "com.apple.security.agent.login")
 )
 
 ;; Java/Scala development permissions
@@ -281,6 +296,8 @@
     (literal "/Library")
     (literal (string-append (param "HOME_DIR") "/Library"))
     (literal (string-append (param "HOME_DIR") "/Library/Caches"))
+    (literal (string-append (param "HOME_DIR") "/Library/Preferences"))
+    (literal (string-append (param "HOME_DIR") "/Library/Application Support"))
 )
 
 (allow file-read-data
