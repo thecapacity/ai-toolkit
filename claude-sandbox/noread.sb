@@ -140,6 +140,10 @@
     (sysctl-name "hw.optional.arm.FEAT_BF16")
     (sysctl-name "hw.optional.arm.FEAT_FRINTTS")
     (sysctl-name "hw.optional.arm.AdvSIMD_HPFPCvt")
+    ;; Sandbox introspection — read by the security tool to adjust behavior when sandboxed
+    (sysctl-name "security.mac.sandbox.sentinel")
+    ;; Pointer authentication availability (ARM security feature detection)
+    (sysctl-name "machdep.ptrauth_enabled")
 )
 
 ;; Allow file writes to specific paths only
@@ -293,6 +297,9 @@
 (allow mach-lookup
   (global-name "com.apple.diagnosticd")
   (global-name "com.apple.SystemConfiguration.configd")
+  ;; Apple analytics daemon — the security tool sends telemetry here; denying it is
+  ;; harmless to functionality but generates persistent log noise on every invocation.
+  (global-name "com.apple.analyticsd")
 )
 
 ;; Java-specific sysctl reads
@@ -354,7 +361,34 @@
     ;; Allow Claude Code to discover git repos by walking the directory tree
     ;; (file-read-metadata = stat/getattr only; does NOT expose file contents)
     (subpath (param "HOME_DIR"))
+    ;; BROWSER DETECTION SECTION
+
+    ;; Browser detection: Claude Code checks a fixed list of browser directories to choose
+    ;; a URL opener. Allow stat + directory-listing at 1-2 levels deep so all current and
+    ;; future browsers are covered without exposing profile file contents.
+    ;; Regex anchored with $ so it stops at the directory itself (not files inside it).
+    (regex (string-append "^" (param "HOME_DIR") "/Library/Application Support/[^/]+$"))
+    (regex (string-append "^" (param "HOME_DIR") "/Library/Application Support/[^/]+/[^/]+$"))
+    ;; Needed when Claude resolves its own binary path through ~/.local symlinks
+    (subpath (string-append (param "HOME_DIR") "/.local"))
+    ;; Allow Claude Code to discover git repos by walking the directory tree
+    ;; (file-read-metadata = stat/getattr only; does NOT expose file contents)
+    (subpath (param "HOME_DIR"))
+
+    ;; END BROWSER DETECTION SECTION
 )
+
+;; BROWSER SECTION 2 of 2
+;; Browser detection — file-read-data counterpart to the file-read-metadata rules above.
+;; Claude Code opens these directories (readdir) to detect installed browsers.
+;; Anchored regex stops at the top of each browser's directory so profile files
+;; (cookies, passwords, history) inside remain inaccessible.
+(allow file-read-data
+    (literal (string-append (param "HOME_DIR") "/Library/Application Support"))
+    (regex (string-append "^" (param "HOME_DIR") "/Library/Application Support/[^/]+$"))
+    (regex (string-append "^" (param "HOME_DIR") "/Library/Application Support/[^/]+/[^/]+$"))
+)
+;; END BROWSER SECTION 2 of 2
 
 ;; autofs_nowait: a flag file that many CoreFoundation processes read to detect
 ;; whether autofs is suppressing mount triggers; harmless to allow
