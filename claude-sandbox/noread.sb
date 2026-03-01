@@ -137,6 +137,7 @@
     (sysctl-name "hw.optional.arm.FEAT_AES")
     (sysctl-name "hw.optional.arm.FEAT_JSCVT")
     (sysctl-name "hw.optional.arm.FEAT_FP16")
+    (sysctl-name "hw.optional.arm.FEAT_BF16")
     (sysctl-name "hw.optional.arm.FEAT_FRINTTS")
     (sysctl-name "hw.optional.arm.AdvSIMD_HPFPCvt")
 )
@@ -171,6 +172,12 @@
     ;; Claude atomic-write temporaries: .claude.json.lock and .claude.json.tmp.<pid>.<ts>
     (literal (string-append (param "HOME_DIR") "/.claude.json.lock"))
     (regex (string-append "^" (param "HOME_DIR") "/\\.claude\\.json\\.tmp\\..*$"))
+
+    ;; Claude singleton lock (prevents multiple instances from conflicting)
+    (literal (string-append (param "HOME_DIR") "/.claude.lock"))
+    ;; Claude version lockfile (written to ~/.local/state/claude/locks/)
+    (subpath (string-append (param "HOME_DIR") "/.local/state/claude"))
+
     (subpath (string-append (param "HOME_DIR") "/Library/Caches/claude-cli-nodejs"))
     ;; Claude app data — Electron session storage, cookies, local-agent-mode-sessions, etc.
     (subpath (string-append (param "HOME_DIR") "/Library/Application Support/Claude"))
@@ -311,11 +318,13 @@
 ;; IPC shared memory for CoreFoundation — needed by security, git, plutil, and most CF processes
 (allow ipc-posix-shm-read-data
     (ipc-posix-name "apple.shm.notification_center")
-    ;; CFPreferences daemon shared memory (fast IPC path; without this cfprefsd
-    ;; falls back to slow direct file I/O which causes "direct access mode" warnings)
+    ;; CFPreferences per-user shared memory (name encodes the uid, e.g. "501v1")
+    ;; without this cfprefsd falls back to slow direct file I/O which causes "direct access mode" warnings)
     (ipc-posix-name "apple.cfprefs.daemonv1")
     ;; CFPreferences per-user shared memory (name encodes the uid, e.g. "501v1")
     (ipc-posix-name-regex #"^apple\.cfprefs\.\d+v\d+$")
+    ;; Uses POSIX ERE ([0-9]+ not \d+ which is PCRE-only)
+    (ipc-posix-name-regex #"^apple\.cfprefs\.[0-9]+v[0-9]+$")
     ;; Keychain DB change notifications — read by security CLI and keychain clients
     (ipc-posix-name "com.apple.AppleDatabaseChanged")
 )
@@ -379,6 +388,15 @@
     (subpath (string-append (param "HOME_DIR") "/.jgit"))
     (subpath (string-append (param "HOME_DIR") "/.config/jgit"))
     (subpath (string-append (param "HOME_DIR") "/Library/Caches/Coursier"))
+)
+
+;; Allow reading sibling repos in the parent workspace directory (WORKSPACE_DIR =
+;; dirname of TARGET_DIR). Claude Code scans adjacent git repos for workspace context.
+;; Write access is still restricted to TARGET_DIR only.
+;; Note: if TARGET_DIR is directly inside HOME_DIR, WORKSPACE_DIR equals HOME_DIR —
+;; the launch script guards against that case.
+(allow file-read-data file-read-metadata
+    (subpath (param "WORKSPACE_DIR"))
 )
 
 ;; read [~]/Library/Java

@@ -144,6 +144,15 @@ TARGET_DIR="$(realpath -m "${TARGET_DIR}" 2>/dev/null || realpath "${TARGET_DIR}
 WRITE_PROFILE_FILE="${WRITE_PROFILE_FILE:-$( (mkdir -p "${HOME}/.config/claude-sandbox" && mktemp "${HOME}/.config/claude-sandbox/profile.sb.XXXXXXXXXX") 2>/dev/null || mktemp "/tmp/claude-sandbox-profile.sb.XXXXXXXXXX")}"
 NO_WORKAROUND="${NO_WORKAROUND:-0}"
 
+# WORKSPACE_DIR is the parent of TARGET_DIR (e.g. ~/Documents/GitHub when
+# TARGET_DIR is ~/Documents/GitHub/myproject). Claude Code reads sibling git
+# repos for workspace context, so we allow file-read on the whole workspace.
+# Guard: if the parent equals HOME, don't expand to the entire home dir.
+WORKSPACE_DIR="$(dirname "${TARGET_DIR}")"
+if [[ "${WORKSPACE_DIR}" == "${HOME}" || "${WORKSPACE_DIR}" == "/" ]]; then
+    WORKSPACE_DIR="${TARGET_DIR}"
+fi
+
 if [[ "${NO_WORKAROUND}" == 0 ]]; then
     WORKAROUND_RULES="$(generate_workaround_allow_read_rules "${TARGET_DIR}")"
 
@@ -165,4 +174,4 @@ fi
 # shellcheck disable=SC2064
 trap "rm -f '${WRITE_PROFILE_FILE}'" EXIT
 
-sandbox-exec -f "${WRITE_PROFILE_FILE}" -D "TARGET_DIR=${TARGET_DIR}" -D "TMP_DIR=/tmp" -D "HOME_DIR=${HOME}" -D "CACHE_DIR=${HOME}/.cache" "${POSITIONAL_ARGS[@]}"
+sandbox-exec -f "${WRITE_PROFILE_FILE}" -D "TARGET_DIR=${TARGET_DIR}" -D "WORKSPACE_DIR=${WORKSPACE_DIR}" -D "TMP_DIR=/tmp" -D "HOME_DIR=${HOME}" -D "CACHE_DIR=${HOME}/.cache" "${POSITIONAL_ARGS[@]}"
