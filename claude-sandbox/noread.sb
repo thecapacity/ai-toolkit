@@ -238,6 +238,8 @@
     (global-name "com.apple.cfprefsd.agent")
     (global-name "com.apple.authd")                  ;; modern auth daemon — the key missing piece
     (global-name "com.apple.security.authtrampoline") ;; privilege-escalation leg of the auth round-trip
+    (global-name "com.apple.ctkd")
+    (global-name "com.apple.ctkahp")
 )
 
 ;; Allow file attribute operations needed for file creation
