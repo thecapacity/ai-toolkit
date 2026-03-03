@@ -272,7 +272,8 @@
 
 ;; Allow login keychain and its SQLite WAL companion files (-shm, -wal)
 ;; Also allow system keychain — macOS walks user → system keychain chain during lookup
-(allow file-read*
+;; file-write* needed for /login to store updated OAuth tokens back to keychain
+(allow file-read* file-write* file-write-create
     (subpath (string-append (param "HOME_DIR") "/Library/Keychains"))
     (subpath "/Library/Keychains")
 )
