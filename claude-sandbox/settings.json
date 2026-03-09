@@ -1,0 +1,80 @@
+{
+  "disableBypassPermissionsMode": "disable",
+  "skipDangerousModePermissionPrompt": false,
+
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "skipDangerousModePermissionPrompt": false,
+
+    "defaultMode": "default",
+
+    "deny": [
+        "Read(~/**)",
+        "Write(~/**)",
+        "Write(~/Documents/**)",
+
+        "Bash(rm -rf //)",
+        "Bash(rm -rf /)",
+        "Bash(rm -rf ~)",
+        "Bash(rm -rf /*)",
+
+        "Read(~/.bash_history)",
+        "Read(~/.ssh/**)",
+        "Read(~/.aws/**)",
+        "Read(~/.gnupg/**)",
+        "Read(~/.netrc)",
+
+        "Bash(git push *)"
+    ],
+    "allow": [
+        "Read(~/Documents/GitHub)",
+        "Read(~/Documents/GitHub/**)",
+        "Write(~/Documents/GitHub)",
+        "Write(~/Documents/GitHub/**)",
+        "Write(~/.claude/**)"
+    ]
+  },
+  "sandbox": {
+        "enabled": false,
+        "allowUnsandboxedCommands": false,
+        "autoAllowBashIfSandboxed": true,
+        "network": {
+          "allowManagedDomainsOnly": true,
+          "allowedDomains": [
+            "github.com",
+            "*.npmjs.org",
+            "pypi.org"
+          ]
+        },
+        "filesystem": {
+            "allowWrite": [
+                "~/.claude",
+                "~/.claude/**",
+                "~/Documents/GitHub",
+                "~/Documents/GitHub/**"
+            ],
+            "allowRead": [
+                "~/.claude",
+                "~/.claude/**",
+                "~/Documents",
+                "~/Documents/GitHub",
+                "~/Documents/GitHub/**",
+                "~/.local/bin",
+                "~/.local/bin/**",
+                "~/.local/lib/**",
+                "~/.local/share/claude/**",
+                "~/.npm/**",
+                "~/.config/**"
+            ],
+            "denyRead": [
+                "~/**"
+            ],
+            "denyWrite": [
+                "~/.ssh/**",
+                "//**",
+                "**/.env*",
+                "~/**"
+            ]
+        }
+  }
+}
