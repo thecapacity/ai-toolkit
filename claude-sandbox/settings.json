@@ -13,26 +13,69 @@
         "Write(~/**)",
         "Write(~/Documents/**)",
 
+        "Read(~/.env*)",
+        "Read(~/**/.env*)",
+        "Write(~/.env*)",
+        "Write(~/**/.env*)",
+        "Edit(~/.env*)",
+        "Edit(~/**/.env*)",
+
         "Bash(rm -rf //)",
         "Bash(rm -rf /)",
         "Bash(rm -rf ~)",
         "Bash(rm -rf /*)",
 
         "Read(~/.bash_history)",
+
         "Read(~/.ssh/**)",
+        "Write(~/.ssh/**)",
+        "Edit(~/.ssh/**)",
+
         "Read(~/.aws/**)",
+        "Write(~/.aws/**)",
+        "Edit(~/.aws/**)",
+
+        "Read(~/.config/gh/**)",
+        "Write(~/.config/gh/**)",
+        "Edit(~/.config/gh/**)",
+
         "Read(~/.gnupg/**)",
         "Read(~/.netrc)",
 
-        "Bash(git push *)"
-    ],
+        "Bash(git push *)",
+        "Bash(npm publish*)",
+
+        "Read(~/**/*secret*)",
+        "Read(~/**/*credential*)",
+        "Read(~/**/*password*)",
+        "Write(~/**/*secret*)",
+        "Write(~/**/*credential*)",
+        "Write(~/**/*password*)",
+        "Edit(~/**/*secret*)",
+        "Edit(~/**/*credential*)",
+        "Edit(~/**/*password*)",
+
+        "Read(~/**/*.pem)",
+        "Read(~/**/*.key)",
+        "Write(~/**/*.pem)",
+        "Write(~/**/*.key)",
+        "Edit(~/**/*.pem)",
+        "Edit(~/**/*.key)"
+        ],
     "allow": [
         "Read(~/Documents/GitHub)",
         "Read(~/Documents/GitHub/**)",
         "Write(~/Documents/GitHub)",
         "Write(~/Documents/GitHub/**)",
         "Write(~/.claude/**)"
+    ],
+    "ask" : [
+      "Bash(npm install*)",
+      "Bash(pip install*)",
+      "Bash(pip3 install*)",
+      "Bash(brew install*)"
     ]
+
   },
   "sandbox": {
         "enabled": false,
